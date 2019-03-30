@@ -1,3 +1,3 @@
 #!/bin/bash
 make -j
-time ./bnb-fs i00 param0
+time ./bnb-fs ../i00 ../param0
