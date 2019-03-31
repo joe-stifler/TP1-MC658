@@ -3,11 +3,11 @@
  * Discipline: MC658
  * Professor: Cid C. de Souza
  * PED: Natanael Ramos
- * Data of creation: March 30, 2019
  * Author1 (RA 176665): Jose Ribeiro Neto <j176665@dac.unicamp.br>
  * Author2 (RA XXXXXX):  <@>
  *
  * File: FlowshopBB.h
+ * Data of creation: March 30, 2019
  **/
 
 #ifndef FLOWSHOP_BB_H
@@ -23,7 +23,7 @@
 #include <climits>
 #include <algorithm>
 
-#define MAXIMUM_TASKS_ALLOWED 62
+#define MAXIMUM_TASKS_ALLOWED 31
 #define getTime(ini, fim) ((fim - ini) / (float) CLOCKS_PER_SEC)
 
 struct Task {
@@ -31,13 +31,13 @@ struct Task {
 		id = d1 = d2 = 0;
 	}
 
-	Task(int _id, int _d1, int _d2) {
+	Task(char _id, int _d1, int _d2) {
 		id = _id;
 		d1 = _d1;
 		d2 = _d2;
 	}
 
-	int id;
+	char id;
 	int d1, d2;
 };
 
@@ -56,6 +56,7 @@ struct Node {
 	int f1; /**/
 	int f2; /**/
 	int sumF2;
+	std::vector<char> order;
 	std::bitset<MAXIMUM_TASKS_ALLOWED> tasks; /**/
 };
 
@@ -70,7 +71,8 @@ private:
 	std::vector<Task> tasks;
 	std::vector<Task> tasksSortedD1;
 	std::vector<Task> tasksSortedD2;
-	std::map<int, std::queue<Node>> *activeNodes;
+	std::map<int, std::queue<Node>> *activeNodes; /* map<estimated F Value, Node> */
+	std::map<int, std::pair<int, int>> *dominance; /* map<active tasks from binary to decimal representation, <f2_tr, sumF2_tr of tasks actives>> */
 
 public:
 	void solve();

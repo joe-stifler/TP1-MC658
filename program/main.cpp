@@ -3,11 +3,11 @@
  * Discipline: MC658
  * Professor: Cid C. de Souza
  * PED: Natanael Ramos
- * Data of creation: March 30, 2019
  * Author1 (RA 176665): Jose Ribeiro Neto <j176665@dac.unicamp.br>
  * Author2 (RA XXXXXX): <@>
  *
  * File: main.cpp
+ * Data of creation: March 30, 2019
  **/
 
 #include <cstdio>
@@ -80,6 +80,11 @@ int main(int argc, const char **argv) {
 
 		printf("BestNode: %d %d %d\n", bestNode.f1, bestNode.f2, bestNode.sumF2);
 		printf("Explored nodes: %d\n", fbb.getExploredNodes());
+
+		printf("Tasks order:\n");
+		for (int i = 0; i < bestNode.order.size(); ++i) {
+			printf("%d ", int(bestNode.order[i]) + 1);
+		}
 
 		return 0;
 	}

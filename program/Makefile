@@ -4,17 +4,18 @@
 # Discipline: MC658
 # PED: Natanael Ramos
 # Professor: Cid C. de Souza
-# Data of creation: March 29, 2019
 # Author1 (RA 176665): Jose Ribeiro Neto <j176665@dac.unicamp.br>
 # Author2 (RA XXXXXX):  <@>
+#
+# Data of creation: March 29, 2019
 ######################################################################################################################################
-# BASIC SEETINGS (objects, flags, etc.)
+# BASIC SETTINGS (objects, flags, etc.)
 ######################################################################################################################################
 
 BINARY_NAME = bnb-fs
 OBJS = main.o FlowshopBB.o
-LINKING_FLAGS = -O3 -std=c++14 -fopenmp
-COMPILATION_FLAGS = -c -O3 -std=c++14 -fopenmp
+LINKING_FLAGS = -O3 -std=c++14
+COMPILATION_FLAGS = -c -O3 -std=c++14
 
 ######################################################################################################################################
 # COMPILATION
