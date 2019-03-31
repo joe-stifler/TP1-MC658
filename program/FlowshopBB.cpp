@@ -17,23 +17,24 @@ FlowshopBB::~FlowshopBB() {
 	delete activeNodes;
 }
 
-FlowshopBB::FlowshopBB(int _limitExploredNodes, int _maximumAllowedTime) {
-	initialTime = clock(); /* initial execution time */
+FlowshopBB::FlowshopBB(unsigned long _limitExploredNodes, int _maximumAllowedTime, clock_t _initialTime) {
+	initialTime = _initialTime; /* initial execution time */
 
 	numExploredNodes = 0;
 	limitExploredNodes = _limitExploredNodes;
 	maximumAllowedTime = (float) _maximumAllowedTime;
 
-	bestNode = Node(0, 0, INT_MAX);
+	bestDual = Node(0, 0, INT_MAX);
+	bestPrimal = Node(0, 0, INT_MAX);
 
-	dominance = new std::map<int, std::pair<int, int>>();
 	activeNodes = new std::map<int, std::queue<Node>>();
+	dominance = new std::unordered_map<int, std::pair<int, int>>();
 }
 
 void FlowshopBB::addTask(int d1, int d2) {
-	tasks.emplace_back((char) tasks.size(), d1, d2);
-	tasksSortedD1.emplace_back((char) tasksSortedD1.size(), d1, d2);
-	tasksSortedD2.emplace_back((char) tasksSortedD2.size(), d1, d2);
+	tasks.emplace_back(tasks.size(), d1, d2);
+	tasksSortedD1.emplace_back(tasksSortedD1.size(), d1, d2);
+	tasksSortedD2.emplace_back(tasksSortedD2.size(), d1, d2);
 }
 
 void FlowshopBB::solve() {
@@ -51,92 +52,138 @@ void FlowshopBB::solve() {
 
 	activeNodes->insert(std::make_pair(0, std::queue<Node>({Node()})));
 
-	/* Explore the tree */
-	while(activeNodes->size() > 0 && maximumAllowedTime > getTime(initialTime, clock())) {
-		auto topNode = activeNodes->begin();
+	int f2;
+	int minD1;
+	char r, i;
+	int s1, s2;
+	char k1, k2;
+	bool minDFound;
+	int estimatedF;
+	Node nodeR, currentNode;
+	char remainTaskstoSchedule;
+	std::map<int, std::queue<Node>>::iterator topNode;
+	std::unordered_map<int, std::pair<int, int>>::iterator refDominance;
+	Task *taskR, *task1, *task2, *endTask1 = tasksSortedD1.data() + numTasks;
 
-		Node currentNode = topNode->second.front();
+	/* Explore the tree */
+	while(limitExploredNodes > numExploredNodes && activeNodes->size() > 0 && maximumAllowedTime > GET_TIME(initialTime, clock())) {
+		topNode = activeNodes->begin();
+
+		currentNode = topNode->second.front();
 		topNode->second.pop();
 
 		if (topNode->second.size() == 0) activeNodes->erase(topNode);
 
-		int taskNum = (int) currentNode.tasks.to_ulong();
+		/* Count the number of already scheduled tasks + the one to be scheduled */
+		r = 1 + __builtin_popcount(currentNode.tasks);
+		remainTaskstoSchedule = numTasks - r;
+
+		refDominance = dominance->find(currentNode.tasks);
 
 		/* applies dominance relation */
-		if (dominance->find(taskNum) != dominance->end()) {
-			auto &ref = (*dominance)[taskNum];
-			if (ref.first <= currentNode.f2 && ref.second <= currentNode.sumF2) continue;
+		if (refDominance != dominance->end()) {
+			if (refDominance->second.first <= currentNode.f2 && refDominance->second.second <= currentNode.sumF2) continue;
 			else {
-				ref.first = currentNode.f2;
-				ref.second = currentNode.sumF2;
+				refDominance->second.first = currentNode.f2;
+				refDominance->second.second = currentNode.sumF2;
 			}
-		} else dominance->insert(std::make_pair(taskNum, std::make_pair(currentNode.f2, currentNode.sumF2)));
+		} else dominance->insert(std::make_pair(currentNode.tasks, std::make_pair(currentNode.f2, currentNode.sumF2)));
 
 		/* Branch step (Expand all currentNode's children) */
-		for (char i = 0; i < numTasks; ++i) {
+		for (i = 0, taskR = tasks.data(); i < numTasks; ++i, ++taskR) {
+			numExploredNodes += (unsigned long) numTasks - r;
+
+			if (limitExploredNodes < numExploredNodes) {
+				numExploredNodes -= (unsigned long) numTasks - r;
+				return;
+			}
+
 			/* Verifies if task i should be scheduled */
-			if (currentNode.tasks[i] == 0) {
-				Task &taskR = tasks[i];
-				Node nodeR = currentNode;
+			if ((currentNode.tasks & (1 << i)) == 0) {
+				minDFound = s1 = s2 = f2 = minD1 = 0;
 
-				nodeR.order.push_back(char(i));
-				nodeR.tasks[i] = 1; /* Marks task i as scheduled */
-				nodeR.f1 = currentNode.f1 + taskR.d1;
-				nodeR.f2 = std::max(nodeR.f1, currentNode.f2) + taskR.d2;
-				nodeR.sumF2 = currentNode.sumF2 + nodeR.f2;
+				nodeR = currentNode;
+				nodeR.tasks |= 1 << i; /* Marks task i as scheduled */
+				nodeR.f1 += taskR->d1;
+				nodeR.f2 = MAX(nodeR.f1, nodeR.f2) + taskR->d2;
+				nodeR.sumF2 += nodeR.f2;
+				// nodeR.order.push_back(char(i));
 
-				int f2 = 0;
-				int minD1 = 0;
-				int s1 = 0, s2 = 0;
-				bool minDFound = false;
-				char r = nodeR.tasks.count();
-
+				/* verifies if it is a leaf node */
 				if (r == numTasks) {
-					/* verifies if primal limitant was found */
-					if (bestNode.sumF2 > nodeR.sumF2) bestNode = nodeR;
+					/* verifies if a primal limitant was found */
+					if (bestPrimal.sumF2 > nodeR.sumF2) {
+						bestPrimal = nodeR;
+						timeFoundBestPrimal = GET_TIME(initialTime, clock());
+					}
 				} else {
-					for (char j = 0, k1 = r + 1, k2 = r + 1; j < numTasks; ++j) {
-						Task &task1 = tasksSortedD1[j];
-						Task &task2 = tasksSortedD2[j];
+					task1 = tasksSortedD1.data();
+					task2 = tasksSortedD2.data();
 
-						if (nodeR.tasks[task1.id] == 0) {
+					/* found all tasks not scheduled yet */
+					for (k1 = k2 = remainTaskstoSchedule; task1 < endTask1; ++task2, ++task1) {
+						/* */
+						if ((nodeR.tasks & (1 << task1->id)) == 0) {
 							if (minDFound == false) {
-								minD1 = task1.d1;
+								minD1 = task1->d1;
 								minDFound = true;
 							}
 
-							s1 += (numTasks - k1 + 1) * task1.d1 + task1.d2;
-							++k1;
+							s1 += k1 * task1->d1 + task1->d2;
+							--k1;
 						}
 
-						if (nodeR.tasks[task2.id] == 0) {
-							s2 += (numTasks - k2 + 1) * task2.d2;
-							++k2;
+						if ((nodeR.tasks & (1 << task2->id)) == 0) {
+							s2 += k2 * task2->d2;
+							--k2;
 						}
 					}
 
-					s1 += (numTasks - r) * nodeR.f1;
-					s2 += (numTasks - r) * std::max(nodeR.f2, nodeR.f1 + minD1);
+					s1 += remainTaskstoSchedule * nodeR.f1;
+					s2 += remainTaskstoSchedule * MAX(nodeR.f2, nodeR.f1 + minD1);
 
-					int estimatedF = nodeR.sumF2 + std::max(s1, s2);
+					estimatedF = nodeR.sumF2 + MAX(s1, s2);
+
+					if (bestDual.sumF2 > estimatedF) {
+						bestDual.sumF2 = estimatedF;
+						timeFoundBestDual = GET_TIME(initialTime, clock());
+					}
 
 					/* Bound step (via primal limitant) */
-					if (bestNode.sumF2 > estimatedF)
-						(*activeNodes)[estimatedF].push(nodeR);
+					if (bestPrimal.sumF2 > estimatedF) {
+						topNode = activeNodes->find(estimatedF);
+						if (topNode == activeNodes->end())
+							activeNodes->insert(std::make_pair(estimatedF, std::queue<Node>({nodeR})));
+						else topNode->second.push(nodeR);
+					}
 				}
-
-				++numExploredNodes;
-
-				if (numExploredNodes > limitExploredNodes || maximumAllowedTime < getTime(initialTime, clock())) return;
 			}
 		}
 	}
+
+	printf("Size map: %d\n", (int) activeNodes->size());
 }
 
-int FlowshopBB::getExploredNodes() {
+unsigned long FlowshopBB::getExploredNodes() {
 	return numExploredNodes;
 }
 
-Node FlowshopBB::getBestNode() {
-	return bestNode;
+Node FlowshopBB::getBestDual() {
+	return bestDual;
+}
+
+Node FlowshopBB::getBestPrimal() {
+	return bestPrimal;
+}
+
+float FlowshopBB::getElapsedTime() {
+	return GET_TIME(initialTime, clock());
+}
+
+float FlowshopBB::getTimeFoundBestDual() {
+	return timeFoundBestDual;
+}
+
+float FlowshopBB::getTimeFoundBestPrimal() {
+	return timeFoundBestPrimal;
 }

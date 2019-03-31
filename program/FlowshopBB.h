@@ -22,9 +22,17 @@
 #include <bitset>
 #include <climits>
 #include <algorithm>
+#include <unordered_map>
 
 #define MAXIMUM_TASKS_ALLOWED 31
-#define getTime(ini, fim) ((fim - ini) / (float) CLOCKS_PER_SEC)
+
+#define MAX(a, b) (a <= b ? b : a)
+#define MIN(a, b) (a <= b ? a : b)
+
+#define SET_BIT(num, n) ((1 << n) | num)
+#define TEST_BIT(num, n) ((1 << n) & num)
+
+#define GET_TIME(ini, fim) ((fim - ini) / (float) CLOCKS_PER_SEC)
 
 struct Task {
 	Task() {
@@ -43,45 +51,53 @@ struct Task {
 
 struct Node {
 	Node() {
-		tasks.reset();
-		sumF2 = f1 = f2 = 0;
+		tasks = sumF2 = f1 = f2 = 0;
 	}
 
 	Node(int _f1, int _f2, int _sum) {
 		f1 = _f1;
 		f2 = _f2;
+		tasks = 0;
 		sumF2 = _sum;
 	}
 
-	int f1; /**/
-	int f2; /**/
+	int f1;
+	int f2;
 	int sumF2;
-	std::vector<char> order;
-	std::bitset<MAXIMUM_TASKS_ALLOWED> tasks; /**/
+	int tasks;
+	// std::vector<char> order;
 };
-
 
 class FlowshopBB {
 private:
-	Node bestNode;
-	clock_t initialTime;
-	int numExploredNodes;
-	int limitExploredNodes;
-	float maximumAllowedTime;
+	Node bestDual;
+	float timeFoundBestDual = 0;
+
+	Node bestPrimal;
+	float timeFoundBestPrimal = 0;
+
 	std::vector<Task> tasks;
+	clock_t initialTime = 0;
+	unsigned long numExploredNodes = 0;
+	unsigned long limitExploredNodes = 0;
+	float maximumAllowedTime = 0;
 	std::vector<Task> tasksSortedD1;
 	std::vector<Task> tasksSortedD2;
 	std::map<int, std::queue<Node>> *activeNodes; /* map<estimated F Value, Node> */
-	std::map<int, std::pair<int, int>> *dominance; /* map<active tasks from binary to decimal representation, <f2_tr, sumF2_tr of tasks actives>> */
+	std::unordered_map<int, std::pair<int, int>> *dominance; /* map<active tasks from binary to decimal representation, <f2_tr, sumF2_tr of tasks actives>> */
 
 public:
 	void solve();
 	~FlowshopBB();
 
-	Node getBestNode();
-	int getExploredNodes();
+	Node getBestDual();
+	Node getBestPrimal();
+	float getElapsedTime();
+	unsigned long getExploredNodes();
+	float getTimeFoundBestDual();
+	float getTimeFoundBestPrimal();
 	void addTask(int d1, int d2);
-	FlowshopBB(int _limitExploredNodes, int _maximumAllowedTime);
+	FlowshopBB(unsigned long _limitExploredNodes, int _maximumAllowedTime, clock_t _initialTime);
 };
 
 #endif //FLOWSHOP_BB_H

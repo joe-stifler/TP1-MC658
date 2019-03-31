@@ -7,7 +7,7 @@
  * Author2 (RA XXXXXX): <@>
  *
  * File: main.cpp
- * Data of creation: March 30, 2019
+bestPrimal
  **/
 
 #include <cstdio>
@@ -21,6 +21,8 @@
 
 int main(int argc, const char **argv) {
 	if (argc == 3) {
+		clock_t initialTime = clock();
+
 		std::string line;
 		std::ifstream paramsFile;
 		paramsFile.open(argv[2], std::ios::in | std::ios::binary);
@@ -40,7 +42,7 @@ int main(int argc, const char **argv) {
 
 		std::getline(paramsFile, line); /* Reads the params data (maximum number of nodes to explore). */
 
-		int limitExploredNodes;
+		unsigned long limitExploredNodes;
 		std::stringstream ssNodes(line);
 		ssNodes >> limitExploredNodes;
 
@@ -50,7 +52,7 @@ int main(int argc, const char **argv) {
 		std::stringstream ssTime(line);
 		ssTime >> maximumAllowedTime;
 
-		FlowshopBB fbb(limitExploredNodes, maximumAllowedTime);
+		FlowshopBB fbb(limitExploredNodes, maximumAllowedTime, initialTime);
 
 		std::getline(instanceFile, line);
 		std::stringstream instances(line);
@@ -76,15 +78,38 @@ int main(int argc, const char **argv) {
 
 		fbb.solve();
 
-		Node bestNode = fbb.getBestNode();
+		Node bestDual = fbb.getBestDual();
+		Node bestPrimal = fbb.getBestPrimal();
 
-		printf("BestNode: %d %d %d\n", bestNode.f1, bestNode.f2, bestNode.sumF2);
-		printf("Explored nodes: %d\n", fbb.getExploredNodes());
+		printf("%s,", argv[1]);
 
-		printf("Tasks order:\n");
-		for (int i = 0; i < bestNode.order.size(); ++i) {
-			printf("%d ", int(bestNode.order[i]) + 1);
+		if (bestPrimal.sumF2 == INT_MAX) {
+			printf(",");
+		} else {
+			printf("%d,", bestPrimal.sumF2);
 		}
+
+		if (bestDual.sumF2 == INT_MAX) {
+			printf(",");
+		} else {
+			printf("%d,", bestDual.sumF2);
+		}
+
+		printf("%lu,", fbb.getExploredNodes());
+
+		if (bestPrimal.sumF2 == INT_MAX) {
+			printf(",");
+		} else {
+			printf("%.2f,", fbb.getTimeFoundBestPrimal());
+		}
+
+		if (bestDual.sumF2 == INT_MAX) {
+			printf(",");
+		} else {
+			printf("%.2f,", fbb.getTimeFoundBestDual());
+		}
+
+		printf("%.2f\n", fbb.getElapsedTime());
 
 		return 0;
 	}
