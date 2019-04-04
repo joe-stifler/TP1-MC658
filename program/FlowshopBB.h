@@ -14,6 +14,7 @@
 #define FLOWSHOP_BB_H
 
 #include <map>
+#include <stack>
 #include <queue>
 #include <ctime>
 #include <cstdio>
@@ -61,11 +62,15 @@ struct Node {
 		sumF2 = _sum;
 	}
 
+	bool operator <(const Node &other) const {
+		return sumF2 > other.sumF2 || (sumF2 == other.sumF2 && f2 > other.f2);
+	}
+
 	int f1;
 	int f2;
 	int sumF2;
 	int tasks;
-	// std::vector<char> order;
+	char orderTasks[MAXIMUM_TASKS_ALLOWED];
 };
 
 class FlowshopBB {
@@ -83,7 +88,7 @@ private:
 	float maximumAllowedTime = 0;
 	std::vector<Task> tasksSortedD1;
 	std::vector<Task> tasksSortedD2;
-	std::map<int, std::queue<Node>> *activeNodes; /* map<estimated F Value, Node> */
+	std::map<int, std::stack<Node>> *activeNodes; /* map<estimated F Value, Node> */
 	std::unordered_map<int, std::pair<int, int>> *dominance; /* map<active tasks from binary to decimal representation, <f2_tr, sumF2_tr of tasks actives>> */
 
 public:

@@ -17,6 +17,30 @@ FlowshopBB::~FlowshopBB() {
 	delete activeNodes;
 }
 
+unsigned long FlowshopBB::getExploredNodes() {
+	return numExploredNodes;
+}
+
+Node FlowshopBB::getBestDual() {
+	return bestDual;
+}
+
+Node FlowshopBB::getBestPrimal() {
+	return bestPrimal;
+}
+
+float FlowshopBB::getElapsedTime() {
+	return GET_TIME(initialTime, clock());
+}
+
+float FlowshopBB::getTimeFoundBestDual() {
+	return timeFoundBestDual;
+}
+
+float FlowshopBB::getTimeFoundBestPrimal() {
+	return timeFoundBestPrimal;
+}
+
 FlowshopBB::FlowshopBB(unsigned long _limitExploredNodes, int _maximumAllowedTime, clock_t _initialTime) {
 	initialTime = _initialTime; /* initial execution time */
 
@@ -27,7 +51,7 @@ FlowshopBB::FlowshopBB(unsigned long _limitExploredNodes, int _maximumAllowedTim
 	bestDual = Node(0, 0, INT_MAX);
 	bestPrimal = Node(0, 0, INT_MAX);
 
-	activeNodes = new std::map<int, std::queue<Node>>();
+	activeNodes = new std::map<int, std::stack<Node>>();
 	dominance = new std::unordered_map<int, std::pair<int, int>>();
 }
 
@@ -50,8 +74,6 @@ void FlowshopBB::solve() {
        return t1.d2 < t2.d2 || (t1.d2 == t2.d2 && t1.d1 < t2.d1);
     });
 
-	activeNodes->insert(std::make_pair(0, std::queue<Node>({Node()})));
-
 	int f2;
 	int minD1;
 	char r, i;
@@ -61,15 +83,18 @@ void FlowshopBB::solve() {
 	int estimatedF;
 	Node nodeR, currentNode;
 	char remainTaskstoSchedule;
-	std::map<int, std::queue<Node>>::iterator topNode;
+	Node auxPrimal1, auxPrimal2;
+	std::map<int, std::stack<Node>>::iterator topNode;
 	std::unordered_map<int, std::pair<int, int>>::iterator refDominance;
 	Task *taskR, *task1, *task2, *endTask1 = tasksSortedD1.data() + numTasks;
+
+	(*activeNodes)[0].push(Node());
 
 	/* Explore the tree */
 	while(limitExploredNodes > numExploredNodes && activeNodes->size() > 0 && maximumAllowedTime > GET_TIME(initialTime, clock())) {
 		topNode = activeNodes->begin();
 
-		currentNode = topNode->second.front();
+		currentNode = topNode->second.top();
 		topNode->second.pop();
 
 		if (topNode->second.size() == 0) activeNodes->erase(topNode);
@@ -107,7 +132,7 @@ void FlowshopBB::solve() {
 				nodeR.f1 += taskR->d1;
 				nodeR.f2 = MAX(nodeR.f1, nodeR.f2) + taskR->d2;
 				nodeR.sumF2 += nodeR.f2;
-				// nodeR.order.push_back(char(i));
+				nodeR.orderTasks[r-1] = i;
 
 				/* verifies if it is a leaf node */
 				if (r == numTasks) {
@@ -120,6 +145,8 @@ void FlowshopBB::solve() {
 					task1 = tasksSortedD1.data();
 					task2 = tasksSortedD2.data();
 
+					auxPrimal1 = auxPrimal2 = nodeR;
+
 					/* found all tasks not scheduled yet */
 					for (k1 = k2 = remainTaskstoSchedule; task1 < endTask1; ++task2, ++task1) {
 						/* */
@@ -130,11 +157,23 @@ void FlowshopBB::solve() {
 							}
 
 							s1 += k1 * task1->d1 + task1->d2;
+
+							auxPrimal1.f1 += task1->d1;
+							auxPrimal1.f2 = MAX(auxPrimal1.f1, auxPrimal1.f2) + task1->d2;
+							auxPrimal1.sumF2 += auxPrimal1.f2;
+							auxPrimal1.orderTasks[numTasks-k1] = char(task1->id);
+
 							--k1;
 						}
 
 						if ((nodeR.tasks & (1 << task2->id)) == 0) {
 							s2 += k2 * task2->d2;
+
+							auxPrimal2.f1 += task2->d1;
+							auxPrimal2.f2 = MAX(auxPrimal2.f1, auxPrimal2.f2) + task2->d2;
+							auxPrimal2.sumF2 += auxPrimal2.f2;
+							auxPrimal2.orderTasks[numTasks-k2] = char(task2->id);
+
 							--k2;
 						}
 					}
@@ -144,17 +183,30 @@ void FlowshopBB::solve() {
 
 					estimatedF = nodeR.sumF2 + MAX(s1, s2);
 
-					if (bestDual.sumF2 > estimatedF) {
-						bestDual.sumF2 = estimatedF;
+					if (bestDual.sumF2 > nodeR.sumF2 + s1) {
+						bestDual.sumF2 = nodeR.sumF2 + s1;
 						timeFoundBestDual = GET_TIME(initialTime, clock());
+					}
+
+					if (bestDual.sumF2 > nodeR.sumF2 + s2) {
+						bestDual.sumF2 = nodeR.sumF2 + s2;
+						timeFoundBestDual = GET_TIME(initialTime, clock());
+					}
+
+					/* Verifies if best primal was found */
+					if (bestPrimal.sumF2 > auxPrimal1.sumF2) {
+						bestPrimal = auxPrimal1;
+						timeFoundBestPrimal = GET_TIME(initialTime, clock());
+					}
+
+					if (bestPrimal.sumF2 > auxPrimal2.sumF2) {
+						bestPrimal = auxPrimal2;
+						timeFoundBestPrimal = GET_TIME(initialTime, clock());
 					}
 
 					/* Bound step (via primal limitant) */
 					if (bestPrimal.sumF2 > estimatedF) {
-						topNode = activeNodes->find(estimatedF);
-						if (topNode == activeNodes->end())
-							activeNodes->insert(std::make_pair(estimatedF, std::queue<Node>({nodeR})));
-						else topNode->second.push(nodeR);
+						(*activeNodes)[estimatedF].push(nodeR);
 					}
 				}
 			}
@@ -162,28 +214,10 @@ void FlowshopBB::solve() {
 	}
 
 	printf("Size map: %d\n", (int) activeNodes->size());
-}
+	printf("Tasks: ");
 
-unsigned long FlowshopBB::getExploredNodes() {
-	return numExploredNodes;
-}
+	for (int i = 0; i < numTasks; ++i)
+		printf("%d-", int(bestPrimal.orderTasks[i]));
 
-Node FlowshopBB::getBestDual() {
-	return bestDual;
-}
-
-Node FlowshopBB::getBestPrimal() {
-	return bestPrimal;
-}
-
-float FlowshopBB::getElapsedTime() {
-	return GET_TIME(initialTime, clock());
-}
-
-float FlowshopBB::getTimeFoundBestDual() {
-	return timeFoundBestDual;
-}
-
-float FlowshopBB::getTimeFoundBestPrimal() {
-	return timeFoundBestPrimal;
+	printf("\n");
 }
