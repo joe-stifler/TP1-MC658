@@ -62,33 +62,37 @@ void FlowshopBB::addTask(int d1, int d2) {
 }
 
 void FlowshopBB::solve() {
-	char numTasks = tasksSortedD1.size();
-
-	/* Sorts tasks by ascending order using d1 as key */
-	std::sort(tasksSortedD1.begin(), tasksSortedD1.end(), [] (const Task& t1, const Task& t2) -> bool {
-       return t1.d1 < t2.d1 || (t1.d1 == t2.d1 && t1.d2 < t2.d2);
-    });
-
-	/* Sorts tasks by ascending order using d2 as key */
-	std::sort(tasksSortedD2.begin(), tasksSortedD2.end(), [] (const Task& t1, const Task& t2) -> bool {
-       return t1.d2 < t2.d2 || (t1.d2 == t2.d2 && t1.d1 < t2.d1);
-    });
-
 	int f2;
 	int minD1;
-	char r, i;
 	int s1, s2;
 	char k1, k2;
+	char rLast, i;
 	bool minDFound;
 	int estimatedF;
 	Node nodeR, currentNode;
 	char remainTaskstoSchedule;
 	Node auxPrimal1, auxPrimal2;
+	char numTasks = tasksSortedD1.size();
 	std::map<int, std::stack<Node>>::iterator topNode;
 	std::unordered_map<int, std::pair<int, int>>::iterator refDominance;
 	Task *taskR, *task1, *task2, *endTask1 = tasksSortedD1.data() + numTasks;
 
+	activeNodes->clear();
 	(*activeNodes)[0].push(Node());
+
+	/* Initializes primal and dual to infinit */
+	bestDual = Node(0, 0, INT_MAX);
+	bestPrimal = Node(0, 0, INT_MAX);
+
+	/* Sorts tasks by ascending order using d1 as key */
+	std::sort(tasksSortedD1.begin(), tasksSortedD1.end(), [] (const Task& t1, const Task& t2) -> bool {
+	   return t1.d1 < t2.d1 || (t1.d1 == t2.d1 && t1.d2 < t2.d2);
+	});
+
+	/* Sorts tasks by ascending order using d2 as key */
+	std::sort(tasksSortedD2.begin(), tasksSortedD2.end(), [] (const Task& t1, const Task& t2) -> bool {
+	   return t1.d2 < t2.d2 || (t1.d2 == t2.d2 && t1.d1 < t2.d1);
+	});
 
 	/* Explore the tree */
 	while(limitExploredNodes > numExploredNodes && activeNodes->size() > 0 && maximumAllowedTime > GET_TIME(initialTime, clock())) {
@@ -97,11 +101,13 @@ void FlowshopBB::solve() {
 		currentNode = topNode->second.top();
 		topNode->second.pop();
 
+		/* If there is no node related with the estimatedF (given by
+		 * topNode->first), then removes the estimatedF from the tree */
 		if (topNode->second.size() == 0) activeNodes->erase(topNode);
 
 		/* Count the number of already scheduled tasks + the one to be scheduled */
-		r = 1 + __builtin_popcount(currentNode.tasks);
-		remainTaskstoSchedule = numTasks - r;
+		rLast = __builtin_popcount(currentNode.tasks);
+		remainTaskstoSchedule = numTasks - rLast - 1;
 
 		refDominance = dominance->find(currentNode.tasks);
 
@@ -114,28 +120,21 @@ void FlowshopBB::solve() {
 			}
 		} else dominance->insert(std::make_pair(currentNode.tasks, std::make_pair(currentNode.f2, currentNode.sumF2)));
 
-		/* Branch step (Expand all currentNode's children) */
+		/* Branch step (Expand all possible currentNode's children) */
 		for (i = 0, taskR = tasks.data(); i < numTasks; ++i, ++taskR) {
-			numExploredNodes += (unsigned long) numTasks - r;
-
-			if (limitExploredNodes < numExploredNodes) {
-				numExploredNodes -= (unsigned long) numTasks - r;
-				return;
-			}
-
 			/* Verifies if task i should be scheduled */
 			if ((currentNode.tasks & (1 << i)) == 0) {
 				minDFound = s1 = s2 = f2 = minD1 = 0;
 
 				nodeR = currentNode;
-				nodeR.tasks |= 1 << i; /* Marks task i as scheduled */
+				nodeR.tasks |= (1 << i); /* Marks task i as scheduled */
 				nodeR.f1 += taskR->d1;
 				nodeR.f2 = MAX(nodeR.f1, nodeR.f2) + taskR->d2;
 				nodeR.sumF2 += nodeR.f2;
-				nodeR.orderTasks[r-1] = i;
+				nodeR.orderTasks[rLast] = i;
 
 				/* verifies if it is a leaf node */
-				if (r == numTasks) {
+				if (remainTaskstoSchedule == 0) {
 					/* verifies if a primal limitant was found */
 					if (bestPrimal.sumF2 > nodeR.sumF2) {
 						bestPrimal = nodeR;
@@ -205,19 +204,13 @@ void FlowshopBB::solve() {
 					}
 
 					/* Bound step (via primal limitant) */
-					if (bestPrimal.sumF2 > estimatedF) {
-						(*activeNodes)[estimatedF].push(nodeR);
-					}
+					if (bestPrimal.sumF2 > estimatedF) (*activeNodes)[estimatedF].push(nodeR);
+
+					/* Verifies if the number of explored nodes was reached */
+					if (limitExploredNodes > numExploredNodes) ++numExploredNodes;
+					else return;
 				}
 			}
 		}
 	}
-
-	printf("Size map: %d\n", (int) activeNodes->size());
-	printf("Tasks: ");
-
-	for (int i = 0; i < numTasks; ++i)
-		printf("%d-", int(bestPrimal.orderTasks[i]));
-
-	printf("\n");
 }

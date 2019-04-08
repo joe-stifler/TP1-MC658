@@ -7,7 +7,7 @@
  * Author2 (RA XXXXXX): <@>
  *
  * File: main.cpp
-bestPrimal
+ * Data of creation: March 29, 2019
  **/
 
 #include <cstdio>
@@ -60,7 +60,7 @@ int main(int argc, const char **argv) {
 		int tasks;
 		instances >> tasks;
 
-		if (tasks > MAXIMUM_TASKS_ALLOWED) {
+		if (tasks >= MAXIMUM_TASKS_ALLOWED) {
 			printf("ERROR: limit of tasks reached. You should pass a value less than %d tasks\n", MAXIMUM_TASKS_ALLOWED + 1);
 			return 1;
 		}
@@ -110,6 +110,25 @@ int main(int argc, const char **argv) {
 		}
 
 		printf("%.2f\n", fbb.getElapsedTime());
+
+		printf("\n");
+		printf("Nodos explorados: %ld\n", fbb.getExploredNodes());
+
+		printf("Melhor primal: %d\n", bestPrimal.sumF2);
+		printf("Melhor tempo primal: %.2f\n", fbb.getTimeFoundBestPrimal());
+
+		printf("Melhor dual: %d\n", bestDual.sumF2);
+		printf("Melhor tempo dual: %.2f\n", fbb.getTimeFoundBestDual());
+
+		printf("Tempo total: %.2f\n", fbb.getElapsedTime());
+
+		printf("Melhor solução: ");
+		for (int i = 0; i < tasks; ++i) {
+			if (i != 0) printf("-");
+			printf("%d", int(bestPrimal.orderTasks[i]) + 1);
+		}
+
+		printf("\n");
 
 		return 0;
 	}

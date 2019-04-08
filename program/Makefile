@@ -14,8 +14,8 @@
 
 BINARY_NAME = bnb-fs
 OBJS = main.o FlowshopBB.o
-LINKING_FLAGS = -O3 -std=c++14
-COMPILATION_FLAGS = -c -O3 -std=c++14
+LINKING_FLAGS = -O3 -std=c++11
+COMPILATION_FLAGS = -c -O3 -std=c++11
 
 ######################################################################################################################################
 # COMPILATION
