@@ -68,7 +68,7 @@ void FlowshopBB::solve() {
 	char k1, k2;
 	char rLast, i;
 	bool minDFound;
-	int estimatedF;
+	int estimatedSumF2;
 	Node nodeR, currentNode;
 	char remainTaskstoSchedule;
 	Node auxPrimal1, auxPrimal2;
@@ -101,9 +101,11 @@ void FlowshopBB::solve() {
 		currentNode = topNode->second.top();
 		topNode->second.pop();
 
-		/* If there is no node related with the estimatedF (given by
-		 * topNode->first), then removes the estimatedF from the tree */
-		if (topNode->second.size() == 0) activeNodes->erase(topNode);
+		/* If there is no node related with the estimatedSumF2 (given by
+		 * topNode->first), then removes the estimatedSumF2 from the tree */
+		if (bestPrimal.sumF2 <= topNode->first) {
+			activeNodes->erase(topNode); continue;
+		} else if (topNode->second.size() == 0) activeNodes->erase(topNode);
 
 		/* Count the number of already scheduled tasks + the one to be scheduled */
 		rLast = __builtin_popcount(currentNode.tasks);
@@ -180,8 +182,9 @@ void FlowshopBB::solve() {
 					s1 += remainTaskstoSchedule * nodeR.f1;
 					s2 += remainTaskstoSchedule * MAX(nodeR.f2, nodeR.f1 + minD1);
 
-					estimatedF = nodeR.sumF2 + MAX(s1, s2);
+					estimatedSumF2 = nodeR.sumF2 + MAX(s1, s2);
 
+					/* Verifies if a best dual was found */
 					if (bestDual.sumF2 > nodeR.sumF2 + s1) {
 						bestDual.sumF2 = nodeR.sumF2 + s1;
 						timeFoundBestDual = GET_TIME(initialTime, clock());
@@ -192,7 +195,7 @@ void FlowshopBB::solve() {
 						timeFoundBestDual = GET_TIME(initialTime, clock());
 					}
 
-					/* Verifies if best primal was found */
+					/* Verifies if a best primal was found */
 					if (bestPrimal.sumF2 > auxPrimal1.sumF2) {
 						bestPrimal = auxPrimal1;
 						timeFoundBestPrimal = GET_TIME(initialTime, clock());
@@ -204,12 +207,12 @@ void FlowshopBB::solve() {
 					}
 
 					/* Bound step (via primal limitant) */
-					if (bestPrimal.sumF2 > estimatedF) (*activeNodes)[estimatedF].push(nodeR);
-
-					/* Verifies if the number of explored nodes was reached */
-					if (limitExploredNodes > numExploredNodes) ++numExploredNodes;
-					else return;
+					if (bestPrimal.sumF2 > estimatedSumF2) (*activeNodes)[estimatedSumF2].push(nodeR);
 				}
+
+				/* Verifies if the number of explored nodes was reached */
+				if (limitExploredNodes > numExploredNodes) ++numExploredNodes;
+				else return;
 			}
 		}
 	}
