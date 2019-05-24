@@ -51,7 +51,7 @@ FlowshopBB::FlowshopBB(unsigned long _limitExploredNodes, int _maximumAllowedTim
 	bestDual = Node(0, 0, INT_MAX);
 	bestPrimal = Node(0, 0, INT_MAX);
 
-	activeNodes = new std::map<int, std::stack<Node>>();
+	activeNodes = new std::priority_queue<Node>();
 	dominance = new std::unordered_map<int, std::pair<int, int>>();
 }
 
@@ -73,12 +73,11 @@ void FlowshopBB::solve() {
 	char remainTaskstoSchedule;
 	Node auxPrimal1, auxPrimal2;
 	char numTasks = (char) tasksSortedD1.size();
-	std::map<int, std::stack<Node>>::iterator topNode;
 	std::unordered_map<int, std::pair<int, int>>::iterator refDominance;
 	Task *taskR, *task1, *task2, *endTask1 = tasksSortedD1.data() + numTasks;
 
-	activeNodes->clear();
-	(*activeNodes)[0].push(Node());
+	// activeNodes->clear();
+	(*activeNodes).push(Node());
 
 	/* Initializes primal and dual to infinit */
 	bestDual = Node(0, 0, INT_MAX);
@@ -97,20 +96,20 @@ void FlowshopBB::solve() {
 	/* Explores the tree while the limit of explored nodes was not reached, while the elapsed
 	 * time is lesser then the maximum allowed time and while there is active nodes. */
 	while(limitExploredNodes > numExploredNodes && activeNodes->size() > 0 && maximumAllowedTime > GET_TIME(initialTime, clock())) {
-		topNode = activeNodes->begin(); /* gets the stack having nodes associated with the current best estimatedSumF2 */
-
-		currentNode = topNode->second.top(); /* Gets the top node of the stack */
-		topNode->second.pop(); /* Removes the top node from the stack */
+		currentNode = activeNodes->top(); /* Gets the top node of the stack */
+		activeNodes->pop(); /* Removes the top node from the stack */
 
 		/* Verifies if the estimatedSumF2 (topNode->first) is better
 		 * than the bestPrimal cost. In case of not, there is no meaning
 		 * in exploring currentNode (or even the other nodes inside the stack),
 		 * since the best we can get is estimatedSumF2 that it is worst than what
 		 * we have with bestPrimal.sumF2. */
-		if (bestPrimal.sumF2 <= topNode->first) {
+		if (bestPrimal.sumF2 <= currentNode.estimate) {
 			/* Removes the whole stack associated with estimatedSumF2, and go to the next exploration */
-			activeNodes->erase(topNode); continue;
-		} else if (topNode->second.size() == 0) activeNodes->erase(topNode); /* Removes the empty stack from the tree */
+			// activeNodes->erase(topNode);
+			continue;
+		}
+		// else if (topNode->second.size() == 0) activeNodes->erase(topNode); /* Removes the empty stack from the tree */
 
 		/* Counts the number of already scheduled tasks */
 		rLast = __builtin_popcount(currentNode.tasks);
@@ -240,8 +239,9 @@ void FlowshopBB::solve() {
 						timeFoundBestPrimal = GET_TIME(initialTime, clock());
 					}
 
+					nodeR.estimate = estimatedSumF2;
 					/* Bound step (via primal limitant) */
-					if (bestPrimal.sumF2 > estimatedSumF2) (*activeNodes)[estimatedSumF2].push(nodeR);
+					if (bestPrimal.sumF2 > estimatedSumF2) activeNodes->push(nodeR);
 				}
 
 				/* Verifies if the number of explored nodes was reached */

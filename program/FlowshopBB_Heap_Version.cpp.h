@@ -53,7 +53,7 @@ struct Task {
 
 struct Node {
 	Node() {
-		tasks = sumF2 = f1 = f2 = 0;
+		estimate = tasks = sumF2 = f1 = f2 = 0;
 	}
 
 	Node(int _f1, int _f2, int _sum) {
@@ -61,12 +61,15 @@ struct Node {
 		f2 = _f2;
 		tasks = 0;
 		sumF2 = _sum;
+		estimate = 0;
 	}
 
 	bool operator <(const Node &other) const {
-		return sumF2 > other.sumF2;
+		return estimate > other.estimate;
+		// return sumF2 > other.sumF2;
 	}
 
+	int estimate;
 	int f1; /* Finalization time on machine 1 of the last scheduled task (according to 'tasks' variable) */
 	int f2; /* Finalization time on machine 2 of the last scheduled task (according to 'tasks' variable) */
 	int sumF2; /* Summation of all finalization times (of the the previous scheduled tasks, according to 'tasks' variable) on machine 2 */
@@ -90,7 +93,7 @@ private:
 	std::vector<Task> tasksSortedD2;
 	unsigned long numExploredNodes = 0;
 	unsigned long limitExploredNodes = 0;
-	std::map<int, std::stack<Node>> *activeNodes; /* map<estimated F Value, Node> */
+	std::priority_queue<Node> *activeNodes; /* map<estimated F Value, Node> */
 	std::unordered_map<int, std::pair<int, int>> *dominance; /* map<active tasks from binary to decimal
 																		representation, <f2_tr, sumF2_tr of tasks actives>> */
 

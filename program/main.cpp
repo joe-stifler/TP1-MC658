@@ -16,6 +16,7 @@
 #include <sstream>
 #include <iostream>
 #include <iostream>
+#include <random>
 
 #include "FlowshopBB.h"
 
@@ -111,24 +112,24 @@ int main(int argc, const char **argv) {
 
 		printf("%.2f\n", fbb.getElapsedTime());
 
-		printf("\n");
-		printf("Nodos explorados: %ld\n", fbb.getExploredNodes());
-
-		printf("Melhor primal: %d\n", bestPrimal.sumF2);
-		printf("Melhor tempo primal: %.2f\n", fbb.getTimeFoundBestPrimal());
-
-		printf("Melhor dual: %d\n", bestDual.sumF2);
-		printf("Melhor tempo dual: %.2f\n", fbb.getTimeFoundBestDual());
-
-		printf("Tempo total: %.2f\n", fbb.getElapsedTime());
-
-		printf("Melhor solução: ");
-		for (int i = 0; i < tasks; ++i) {
-			if (i != 0) printf("-");
-			printf("%d", int(bestPrimal.orderTasks[i]) + 1);
-		}
-
-		printf("\n");
+		// printf("\n");
+		// printf("Nodos explorados: %ld\n", fbb.getExploredNodes());
+		//
+		// printf("Melhor primal: %d\n", bestPrimal.sumF2);
+		// printf("Melhor tempo primal: %.2f\n", fbb.getTimeFoundBestPrimal());
+		//
+		// printf("Melhor dual: %d\n", bestDual.sumF2);
+		// printf("Melhor tempo dual: %.2f\n", fbb.getTimeFoundBestDual());
+		//
+		// printf("Tempo total: %.2f\n", fbb.getElapsedTime());
+		//
+		// printf("Melhor solução: ");
+		// for (int i = 0; i < tasks; ++i) {
+		// 	if (i != 0) printf("-");
+		// 	printf("%d", int(bestPrimal.orderTasks[i]) + 1);
+		// }
+		//
+		// printf("\n");
 
 		return 0;
 	}

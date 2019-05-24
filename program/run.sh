@@ -1,3 +1,2 @@
 #!/bin/bash
-make -j
-time ./bnb-fs ../instancias/i$1 ../param0
+time ./bnb-fs ../instancias/i$1 param0
